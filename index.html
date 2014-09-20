@@ -1,0 +1,124 @@
+<html>
+<head>
+<style>
+#chatdiv {
+    border: 1px solid black;
+    width: 100%;
+    height: 3em;
+    overflow: hidden;
+    left: 0px;
+    top: 0px;
+    position: absolute;
+    pointer-events: none;
+}
+#chatdiv button, #chatdiv input {
+    pointer-events: auto;
+}
+
+</style>
+<script src="//code.jquery.com/jquery-1.11.0.min.js"></script>
+<script src="cookies.js"></script>
+<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, target-densitydpi=medium-dpi, minimum-scale=1.0">
+<meta charset="utf-8">
+</head>
+<body>
+<div id="chatdiv">
+<button id="expand">v</button>
+<input id="msg" type="text">
+<button id="send">Send</button>
+<div id="logs">
+</div>
+</div>
+<script>
+function do_eval(s)
+{
+    try {
+        eval(s);
+    } catch(e) {
+    }
+}
+var logHandler = null;
+$(document).ready(function() {
+    var askFirstTime = true;
+    while (!docCookies.hasItem("username") || docCookies.getItem("username") === "" || docCookies.getItem("username") === null) {
+        var username;
+        if (askFirstTime) {
+            username = prompt("대화명을 넣어주세요:");
+            askFirstTime = false;
+        } else {
+            username = prompt("이미 사용중입니다. 다른 대화명을 넣어주세요:");
+        }
+        $.ajax("/set_username", { async: false, type: "POST", data: username });
+    }
+    if (!docCookies.hasItem("username") || docCookies.getItem("username") === "" || docCookies.getItem("username") === null) {
+        location.reload();
+    }
+    var expanded = false;
+    $("#expand").click(function(){
+        if (expanded) {
+            $("#chatdiv").height("3em");
+            expanded = false;
+        }
+        else {
+            $("#chatdiv").height("100%");
+            expanded = true;
+        }
+    });
+	$("#send").click(function(){
+		var msg = $("#msg").val();
+		if (msg.length > 0)
+			$.post("/send", msg);
+		$("#msg").val("");
+	});
+	$("#msg").keyup(function(event){
+		if(event.keyCode == 13){
+			$("#send").click();
+		}
+	});
+	var lastLog = 0;
+	var updateLog;
+	updateLog = function(data)
+	{
+		var lastLog = data.last*1;
+		var s = "";
+        function htmlEncode(s)
+        {
+            return s.replace(/&(?!\w+([;\s]|$))/g, "&amp;")
+            .replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+		for(var x in data.msgs)
+		{
+            if (x[0] == "chat")
+                x[1] = htmlEncode(x[1]);
+            if (logHandler)
+            {
+                try {
+                    x = logHandler(data.msgs[x]);
+                } catch(e) {
+                    x = data.msgs[x];
+                }
+
+            }
+            else
+                x = data.msgs[x];
+            if (x[0] == "chat")
+                s = x[1] + "<BR>" + s;
+            else if (x[0] == "script")
+            {
+                do_eval(x[1]);
+            }
+		}
+		$("#logs").html(s+$("#logs").html());
+		var failFunction;
+		failFunction = function(){
+			$.getJSON("/logs/"+lastLog, updateLog).fail(failFunction);
+		};
+        setTimeout(function(){
+            $.getJSON("/logs/"+lastLog, updateLog).fail(failFunction);
+        }, 100);
+	}
+	$.getJSON("/logs", updateLog);
+});
+</script>
+</body>
+</html>
