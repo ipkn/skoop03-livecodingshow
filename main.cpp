@@ -102,6 +102,13 @@ void broadcast(const string& type, const string& msg)
     pending_responses.clear();
 }
 
+template <typename App, typename Req>
+pair<bool, string> get_username(App& app, Req& req)
+{
+    auto& ctx = app.template get_context<crow::CookieParser>(req);
+    return validate_cookie(hex_decode(ctx.get_cookie("username")));
+}
+
 int main()
 {
     srand(time(NULL));
