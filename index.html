@@ -88,19 +88,18 @@ $(document).ready(function() {
         }
 		for(var x in data.msgs)
 		{
+            x = data.msgs[x];
             if (x[0] == "chat")
                 x[1] = htmlEncode(x[1]);
             if (logHandler)
             {
                 try {
-                    x = logHandler(data.msgs[x]);
+                    x = logHandler(x);
                 } catch(e) {
-                    x = data.msgs[x];
+                    console.log(e);
                 }
 
             }
-            else
-                x = data.msgs[x];
             if (x[0] == "chat")
                 s = x[1] + "<BR>" + s;
             else if (x[0] == "script")
